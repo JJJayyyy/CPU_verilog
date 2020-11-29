@@ -1,15 +1,11 @@
 `timescale 1ns/10ps
-`include "imem.v"
 
-module IF(clk, rst, IF_instruction);
+module IF(clk, rst, pc);
 
 input clk, rst;
-output [0:31] IF_instruction;
+output [0:31] pc;
 wire clk, rst;
-reg [0:31] IF_instruction;
 reg [0:31] pc;
-
-imem imem1 (.memAddr(pc[0:8]), .dataOut(IF_instruction));
 
 always @(posedge clk)
 begin
