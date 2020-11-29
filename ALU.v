@@ -1,7 +1,7 @@
-module ALU(ALU_enable, ID_function_bit, ID_rD, ID_PPPWW, ID_rA_data, ID_rB_data
-		ALU_output, ALU_PPPWW, ALU_rD, CLK, RST);
+module ALU_stage(clk, reset, ALU_enable, ID_function_bit, ID_rD, ID_PPPWW, ID_rA_data, ID_rB_data
+		ALU_output, ALU_PPPWW, ALU_rD);
 
-input ALU_enable, CLK, RST;
+input ALU_enable, clk, reset;
 input[0:5] ID_function_bit;
 input[0:4] ID_rD;
 input[0:4] ID_PPPWW;
@@ -13,8 +13,8 @@ output reg [0:4] ALU_rD;
 
 integer i, WW, bit, s;  // bit and s are for VSLL
 
-always@(posedge CLK) begin
-	if(RST) begin
+always@(posedge clk) begin
+	if(reset) begin
 		ALU_output <= 0;
 	end
 	else if(ALU_enable) begin
@@ -27,7 +27,6 @@ always@(posedge CLK) begin
 
 			4b'0011: 	ALU_output <= ~ ID_rA_data[0:63]; 	// VNOT
 				
-
 			4b'0100: 	2'11 : ALU_output <= ID_rA_data[0:63]; 	// VMOV
 				
 
@@ -263,4 +262,8 @@ always@(posedge CLK) begin
 						default: ALU_output <= 0;
 					endcase
 				end
-				
+		endcase
+	end
+end
+endmodule
+

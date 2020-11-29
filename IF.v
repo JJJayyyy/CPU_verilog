@@ -1,6 +1,6 @@
 `timescale 1ns/10ps
 
-module IF(clk, rst, pc);
+module IF_stage(clk, rst, pc);
 
 input clk, rst;
 output [0:31] pc;

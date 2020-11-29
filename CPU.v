@@ -1,246 +1,38 @@
-module ALU(ALU_enable, ID_function_bit, ID_rD, ID_PPPWW, ID_rA_data, ID_rB_data
-		ALU_output, ALU_PPPWW, ALU_rD, CLK, RST);
+cardinal_processor (clk, reset, instruction, dataIn, pc, dataOut, memAddr, memEn, memWrEn);           
 
-input ALU_enable, CLK, RST;
-input[0:5] ID_function_bit;
-input[0:4] ID_rD;
-input[0:4] ID_PPPWW;
-input[0:63] ID_rA_data;
-input[0:63] ID_rB_data;
-output reg [0:63] ALU_output;
-output reg [0:2] ALU_PPPWW;
-output reg [0:4] ALU_rD;
 
-integer i, WW, bit, s;  // bit and s are for VSLL
+input clk 			// System Clock
+input reset 		// System Reset
+input reg [0:31] instruction  // Instruction from Instruction Memory
+input [0:63] dataIn       // Data from Data Memory
+output [0:31] pc           // Program Counter
+output reg [0:63] dataOut      // Write Data to Data Memory
+output reg [0:31] memAddr      // Write Address for Data Memory 
+output memEn        // Data Memory Enable
+output memWrEn      // Data Memory Write Enable
 
-always@(posedge CLK) begin
-	if(RST) begin
-		ALU_output <= 0;
+wire WB_en, ALU_enable, ID_wmem_en, ID_wb_en;
+wire[0:4] WB_rD, WB_PPPWW, ID_rD, ID_PPPWW, ALU_rD, ALU_PPPWW;
+wire[0:5] ID_function_bit, 
+wire[0:63] WB_data, ALU_output, ID_rA_data, ID_rB_data;
+
+
+IF_stage IF_block (.clk(clk), .rst(reset), .pc(pc));
+
+ID_stage ID_block (.clk(clk), .rst(reset), .IF_instruction(instruction), .ID_function_bit(ID_function_bit), .ID_rD(ID_rD),
+ 	.ID_PPPWW(ID_PPPWW), .ID_rA_data(ID_rA_data), .ID_rB_data(ID_rB_data), .ID_wb_en(ID_wb_en), .ID_wmem_en(ID_wmem_en));
+
+ALU_stage ALU_block (.clk(clk), .reset(reset), .ALU_enable(ID_wb_en), .ID_function_bit(ID_function_bit), .ID_rD(ID_rD), .ID_PPPWW(ID_PPPWW),
+ 	.ID_rA_data(ID_rA_data), .ID_rB_data(ID_rB_data), .ALU_output(ALU_output), .ALU_PPPWW(ALU_PPPWW), .ALU_rD(ALU_rD));
+
+WB_stage WB_block (.clk(clk), .rst(reset), .WB_en(ID_wb_en), .WB_rD(ALU_rD), .WB_PPPWW(ALU_PPPWW), .WB_data(WB_data));
+
+	always@(*)begin
+		if(ID_function_bit[0:1]==2'b01) WB_data <= dataIn;
+		else WB_data <= ALU_output;
 	end
-	else if(ALU_enable) begin
-		case(ID_function_bit[2:5])
-			4b'0000: 	// VAND
-				ALU_output <= ID_rA_data[0:63] & ID_rB_data[0:63];
-				
-			4b'0001: 	// VOR
-				ALU_output <= ID_rA_data[0:63] | ID_rB_data[0:63];
 
-			4b'0010: 	// VXOR
-				ALU_output <= ID_rA_data[0:63] ^ ID_rB_data[0:63];
-
-			4b'0011: 	// VNOT
-				ALU_output <= ~ ID_rA_data[0:63];
-
-			4b'0100: 	// VMOV
-				2'11 : ALU_output <= ID_rA_data[0:63];
-
-			4b'0101: 	// VADD
-				case(PPPWW[3:4])
-					2'00 : 	WW = 8;
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  ID_rA_data[i:i+(WW-1)] + ID_rB_data[i:i+(WW-1)];
-					2'01 : 	WW = 16;
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  ID_rA_data[i:i+(WW-1)] + ID_rB_data[i:i+(WW-1)];
-					2'10 : 	WW = 32;
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  ID_rA_data[i:i+(WW-1)] + ID_rB_data[i:i+(WW-1)];
-					2'11 : 	WW = 64;
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  ID_rA_data[i:i+(WW-1)] + ID_rB_data[i:i+(WW-1)];
-					default: ALU_output <= 0;
-				endcase
-
-			4b'0110: 	// VSUB
-				case(PPPWW[3:4])
-					2'00 : 	WW = 8;
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  ID_rA_data[i:i+(WW-1)] + ~ID_rB_data[i:i+(WW-1)] + 1;
-					2'01 : 	WW = 16;
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  ID_rA_data[i:i+(WW-1)] + ~ID_rB_data[i:i+(WW-1)] + 1;
-					2'10 : 	WW = 32;
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  ID_rA_data[i:i+(WW-1)] + ~ID_rB_data[i:i+(WW-1)] + 1;
-					2'11 : 	WW = 64;
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  ID_rA_data[i:i+(WW-1)] + ~ID_rB_data[i:i+(WW-1)] + 1;
-					default: ALU_output <= 0;
-				endcase
-
-			4b'0111: 	// VMULEU
-				case(PPPWW[3:4])
-					2'00 : 	WW = 8;
-							for(i=0; i<63-WW*2; i=i+2*WW) ALU_output[i:i+(2*WW-1)] <=  ID_rA_data[i:i+(WW-1)] * ID_rB_data[i:i+(WW-1)];
-					2'01 : 	WW = 16;
-							for(i=0; i<63-WW*2; i=i+2*WW) ALU_output[i:i+(2*WW-1)] <=  ID_rA_data[i:i+(WW-1)] * ID_rB_data[i:i+(WW-1)];
-					2'10 : 	WW = 32;
-							for(i=0; i<63-WW*2; i=i+2*WW) ALU_output[i:i+(2*WW-1)] <=  ID_rA_data[i:i+(WW-1)] * ID_rB_data[i:i+(WW-1)];
-					default: ALU_output <= 0;
-				endcase
-
-			4b'1000:	// VMULOU
-				case(PPPWW[3:4])
-					2'00 : 	WW = 8;
-							for(i=0; i<63-WW*2; i=i+2*WW) ALU_output[i:i+(2*WW-1)] <=  ID_rA_data[i+WW:i+(2*WW-1)] * ID_rB_data[i+WW:i+(2*WW-1)];
-					2'01 : 	WW = 16;
-							for(i=0; i<63-WW*2; i=i+2*WW) ALU_output[i:i+(2*WW-1)] <=  ID_rA_data[i+WW:i+(2*WW-1)] * ID_rB_data[i+WW:i+(2*WW-1)];
-					2'10 : 	WW = 32;
-							for(i=0; i<63-WW*2; i=i+2*WW) ALU_output[i:i+(2*WW-1)] <=  ID_rA_data[i+WW:i+(2*WW-1)] * ID_rB_data[i+WW:i+(2*WW-1)];
-					default: ALU_output <= 0;
-				endcase
-
-			4b'1001:	// VRRTH
-				case(PPPWW[3:4])
-					2'00 : 	WW = 8;
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  {ID_rA_data[i+WW/2:i+(WW-1)], ID_rA_data[i:i+(WW/2-1)]};
-					2'01 : 	WW = 16;
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  {ID_rA_data[i+WW/2:i+(WW-1)], ID_rA_data[i:i+(WW/2-1)]};
-					2'10 : 	WW = 32;
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  {ID_rA_data[i+WW/2:i+(WW-1)], ID_rA_data[i:i+(WW/2-1)]};
-					2'11 : 	WW = 64;
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  {ID_rA_data[i+WW/2:i+(WW-1)], ID_rA_data[i:i+(WW/2-1)]};
-					default: ALU_output <= 0;
-				endcase
-
-			4b'1010:	// VSLL
-				case(PPPWW[3:4])
-					2'00 : 	WW = 8;
-							bit = 3;
-							for(i=0; i<63-WW; i=i+WW) begin
-								s = ID_rB_data[i+WW-bit:i+WW-1];
-								ALU_output[i:i+(WW-1)] <=  {ID_rA_data[i+s:i+(WW-1)], s{0}};
-							end
-					2'01 : 	WW = 16;
-							bit = 4;										
-							for(i=0; i<63-WW; i=i+WW) begin
-								s = ID_rB_data[i+WW-bit:i+WW-1];
-								ALU_output[i:i+(WW-1)] <=  {ID_rA_data[i+s:i+(WW-1)], s{0}};
-							end
-					2'10 : 	WW = 32;
-							bit = 5;										
-							for(i=0; i<63-WW; i=i+WW) begin
-								s = ID_rB_data[i+WW-bit:i+WW-1];
-								ALU_output[i:i+(WW-1)] <=  {ID_rA_data[i+s:i+(WW-1)], s{0}};
-							end
-					2'11 : 	WW = 64;
-							bit = 6;
-							for(i=0; i<63-WW; i=i+WW) begin
-								s = ID_rB_data[i+WW-bit:i+WW-1];
-								ALU_output[i:i+(WW-1)] <=  {ID_rA_data[i+s:i+(WW-1)], s{0}};
-							end
-					default: ALU_output <= 0;
-				endcase
-
-			4b'1011:	// VSLLi
-				case(PPPWW[3:4])
-					2'00 : 	WW = 8;
-							bit = 3;
-							s = ID_rB_data[63-bit:63];  // put the shift amount at rB[59:63]
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  {ID_rA_data[i+s:i+(WW-1)], s{0}};
-					2'01 : 	WW = 16;
-							bit = 4;
-							s = ID_rB_data[63-bit:63]; 
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  {ID_rA_data[i+s:i+(WW-1)], s{0}};
-					2'10 : 	WW = 32;
-							bit = 5;
-							s = ID_rB_data[63-bit:63]; 
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  {ID_rA_data[i+s:i+(WW-1)], s{0}};
-					2'11 : 	WW = 64;
-							bit = 5;
-							s = ID_rB_data[63-bit:63];
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  {ID_rA_data[i+s:i+(WW-1)], s{0}};
-					default: ALU_output <= 0;
-				endcase
-
-			4b'1100:	// VSRL
-				case(PPPWW[3:4])
-					2'00 : 	WW = 8;
-							bit = 3;								
-							for(i=0; i<63-WW; i=i+WW) begin
-								s = ID_rB_data[i+(WW-bit):i+(WW-1)];
-								ALU_output[i:i+(WW-1)] <=  {s{0}, ID_rA_data[i:i+(WW-s-1)]};
-							end
-					2'01 : 	WW = 16;
-							bit = 4;
-							for(i=0; i<63-WW; i=i+WW) begin
-								s = ID_rB_data[i+(WW-bit):i+(WW-1)];
-								ALU_output[i:i+(WW-1)] <=  {s{0}, ID_rA_data[i:i+(WW-s-1)]};
-							end
-					2'10 : 	WW = 32;
-							bit = 5;
-							for(i=0; i<63-WW; i=i+WW) begin
-								s = ID_rB_data[i+(WW-bit):i+(WW-1)];
-								ALU_output[i:i+(WW-1)] <=  {s{0}, ID_rA_data[i:i+(WW-s-1)]};
-							end										
-					2'11 : 	WW = 64;
-							bit = 6;
-							for(i=0; i<63-WW; i=i+WW) begin
-								s = ID_rB_data[i+(WW-bit):i+(WW-1)];
-								ALU_output[i:i+(WW-1)] <=  {s{0}, ID_rA_data[i:i+(WW-s-1)]};
-							end										
-					default: ALU_output <= 0;
-				endcase
-
-			4b'1101:	// VSRLi
-				case(PPPWW[3:4])
-					2'00 : 	WW = 8;
-							bit = 3;
-							s = ID_rB_data[63-bit:63];  // put the shift amount at rB[59:63]
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  {s{0}, ID_rA_data[i:i+(WW-s-1)]};
-					2'01 : 	WW = 16;
-							bit = 4;
-							s = ID_rB_data[63-bit:63]; 
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  {s{0}, ID_rA_data[i:i+(WW-s-1)]};
-					2'10 : 	WW = 32;
-							bit = 5;
-							s = ID_rB_data[63-bit:63]; 
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  {s{0}, ID_rA_data[i:i+(WW-s-1)]};
-					2'11 : 	WW = 64;
-							bit = 5;
-							s = ID_rB_data[63-bit:63];
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  {s{0}, ID_rA_data[i:i+(WW-s-1)]};
-					default: ALU_output <= 0;
-				endcase
-
-			4b'1110:	// VSRA
-				case(PPPWW[3:4])
-					2'00 : 	WW = 8;
-							bit = 3;								
-							for(i=0; i<63-WW; i=i+WW) begin
-								s = ID_rB_data[i+(WW-bit):i+(WW-1)];
-								ALU_output[i:i+(WW-1)] <=  {s{ID_rA_data[i]}, ID_rA_data[i:i+(WW-s-1)]};
-							end
-					2'01 : 	WW = 16;
-							bit = 4;
-							for(i=0; i<63-WW; i=i+WW) begin
-								s = ID_rB_data[i+(WW-bit):i+(WW-1)];
-								ALU_output[i:i+(WW-1)] <=  {s{ID_rA_data[i]}, ID_rA_data[i:i+(WW-s-1)]};
-							end
-					2'10 : 	WW = 32;
-							bit = 5;
-							for(i=0; i<63-WW; i=i+WW) begin
-								s = ID_rB_data[i+(WW-bit):i+(WW-1)];
-								ALU_output[i:i+(WW-1)] <=  {s{ID_rA_data[i]}, ID_rA_data[i:i+(WW-s-1)]};
-							end										
-					2'11 : 	WW = 64;
-							bit = 6;
-							for(i=0; i<63-WW; i=i+WW) begin
-								s = ID_rB_data[i+(WW-bit):i+(WW-1)];
-								ALU_output[i:i+(WW-1)] <=  {s{ID_rA_data[i]}, ID_rA_data[i:i+(WW-s-1)]};
-							end										
-					default: ALU_output <= 0;
-				endcase
-
-			4b'1111:	// VSRAi
-				case(PPPWW[3:4])
-					2'00 : 	WW = 8;
-							bit = 3;
-							s = ID_rB_data[63-bit:63];  // put the shift amount at rB[59:63]
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  {s{ID_rA_data[i]}, ID_rA_data[i:i+(WW-s-1)]};
-					2'01 : 	WW = 16;
-							bit = 4;
-							s = ID_rB_data[63-bit:63]; 
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  {s{ID_rA_data[i]}, ID_rA_data[i:i+(WW-s-1)]};
-					2'10 : 	WW = 32;
-							bit = 5;
-							s = ID_rB_data[63-bit:63]; 
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  {s{ID_rA_data[i]}, ID_rA_data[i:i+(WW-s-1)]};
-					2'11 : 	WW = 64;
-							bit = 5;
-							s = ID_rB_data[63-bit:63];
-							for(i=0; i<63-WW; i=i+WW) ALU_output[i:i+(WW-1)] <=  {s{ID_rA_data[i]}, ID_rA_data[i:i+(WW-s-1)]};
-					default: ALU_output <= 0;
-				endcase
+	assign dataOut = ID_rA_data;
+	assign memAddr = {16'b0, ID_rB_data[48:63]};
+	assign memEn = ID_wb_en;
+	assign memWrEn = ID_wmem_en;
