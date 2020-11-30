@@ -32,9 +32,7 @@ reg [0:63] ID_rA_data;
 reg [0:63] ID_rB_data;
 reg  ID_wb_en, ID_wmem_en;
 
-	
 reg [0:63] Register [0:4];
-
 
 integer i;
 
