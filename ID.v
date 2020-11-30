@@ -5,35 +5,23 @@
 //rD 5 bits 
 //PPPWW 5 bits 
 
-module ID(clk, rst, IF_instruction, WB_en, WB_rD, WB_PPPWW, WB_data, ID_function_bit, ID_rD, ID_PPPWW, ID_rA_data, ID_rB_data, ID_wb_en, ID_wmem_en);
-input clk, rst;
-input [0:31] IF_instruction;
-input WB_en;
-input [0:4] WB_rD;
-input [0:4] WB_PPPWW;
-input [0:64] WB_data;
-wire clk, rst;
-wire [0:31] IF_instruction;
-wire WB_en;
-wire [0:4] WB_rD;
-wire [0:4] WB_PPPWW;
-wire [0:64] WB_data;
+module ID(clk, rst, IF_instruction, ALU_WB_en, WB_rD, WB_PPPWW, WB_data, ID_function_bit, ID_rD, ID_PPPWW, ID_rA_data, ID_rB_data, ID_WB_en, ID_wmem_en);
+input wire clk, rst;
+input wire [0:31] IF_instruction;
+input wire ALU_WB_en;
+input wire [0:4] WB_rD;
+input wire [0:4] WB_PPPWW;
+input wire [0:63] WB_data;
 
-output [0:5] ID_function_bit;
-output [0:4] ID_rD;
-output [0:4] ID_PPPWW;
-output [0:63] ID_rA_data;
-output [0:63] ID_rB_data;
-output  ID_wb_en, ID_wmem_en;
-reg [0:5] ID_function_bit;
-reg [0:4] ID_rD;
-reg [0:4] ID_PPPWW;
-reg [0:63] ID_rA_data;
-reg [0:63] ID_rB_data;
-reg  ID_wb_en, ID_wmem_en;
+output reg [0:5] ID_function_bit;
+output reg [0:4] ID_rD;
+output reg [0:4] ID_PPPWW;
+output reg [0:63] ID_rA_data;
+output reg [0:63] ID_rB_data;
+output reg ID_WB_en, ID_wmem_en;
 
-reg [0:63] Register [0:4];
 
+reg [0:63] Register [0:31];
 integer i;
 
 always @(posedge clk)
@@ -45,14 +33,14 @@ begin
 		ID_PPPWW <= 0;
 		ID_rA_data <= 0;
 		ID_rB_data <= 0;
-		ID_wb_en <= 0;
+		ID_WB_en <= 0;
 		ID_wmem_en <= 0;
 	end
 	else
 	begin
 		ID_rD <= IF_instruction[6:10];
 		ID_PPPWW <= IF_instruction[21:25];
-		ID_wb_en <= 1;
+		ID_WB_en <= 1;
 		ID_wmem_en <= 0;
 		case(IF_instruction[0:5])
 			6'b101010 :
@@ -155,18 +143,18 @@ begin
 					end
 				endcase
 						
-			6'b100000 :
+			6'b100000 ://Load 
 			begin
 				ID_function_bit <= 6'b010000; 
 				ID_rA_data <= 0; 
 				ID_rB_data <= {48'b0,IF_instruction[16:31]};
 			end
-			6'b100001 :
+			6'b100001 ://Store
 			begin
 				ID_function_bit <= 6'b100000; 
-				ID_rA_data <= 0; 
+				ID_rA_data <= Register[IF_instruction[6:10]]; 
 				ID_rB_data <= {48'b0,IF_instruction[16:31]}; 
-				ID_wb_en <= 0;
+				ID_WB_en <= 0;
 				ID_wmem_en <= 1;
 			end
 			6'b111100 :
@@ -174,14 +162,14 @@ begin
 				ID_function_bit <= 6'b110000; 
 				ID_rA_data <= 0; 
 				ID_rB_data <= 0; 
-				ID_wb_en <= 0;//NOP
+				ID_WB_en <= 0;//NOP
 			end
 			default :
 			begin
 				ID_function_bit <= 6'b110000; 
 				ID_rA_data <= 0; 
 				ID_rB_data <= 0; 
-				ID_wb_en <= 0;//NOP
+				ID_WB_en <= 0;//NOP
 			end
 		endcase
 	end
@@ -198,7 +186,7 @@ begin
 	end
 	else
 	begin
-		if(WB_en==1 && WB_rD!=5'b00000)
+		if(ALU_WB_en==1 && WB_rD!=5'b00000)
 		begin
 			case(WB_PPPWW[0:2])
 				3'b000 :
