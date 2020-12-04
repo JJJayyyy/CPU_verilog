@@ -192,9 +192,9 @@ begin
 				3'b000 :
 					Register[WB_rD] <= WB_data;
 				3'b001 : 
-					Register[WB_rD][32:63] <= WB_data[32:63];
-				3'b010 : 
 					Register[WB_rD][0:31] <= WB_data[0:31];
+				3'b010 : 
+					Register[WB_rD][32:63] <= WB_data[32:63];
 				3'b011 :
 					case(WB_PPPWW[3:4])
 						2'b00 :

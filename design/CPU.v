@@ -52,7 +52,7 @@ ALU ALU_block (
 	.ID_rB_data(ID_rB_data), 
 	.ID_WB_en(ID_WB_en), 
 	.ALU_function_bit(ALU_function_bit), 
-	.ALU_output(ALU_output), 
+	.ALU_output_up(ALU_output), 
 	.ALU_PPPWW(ALU_PPPWW), 
 	.ALU_rD(ALU_rD), 
 	.ALU_WB_en(ALU_WB_en));
